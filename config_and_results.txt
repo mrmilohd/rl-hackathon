@@ -205,7 +205,8 @@
   1. The SAC agent achieves 100% completion across 500+ standard
      episodes with zero safety violations.
 
-  2. Mean score of -283 outperforms the hardcoded baseline of -300
+    2. Mean score of -283 outperforms the hardcoded baseline score
+      (~-300)
      by approximately 6%.
 
   3. The agent settles to sub-1.0 errors within 12 steps on average,

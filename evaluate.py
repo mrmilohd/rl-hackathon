@@ -6,7 +6,7 @@ multiple randomized seeds and reports the hackathon score.
 
 Scoring metric:
     score = Σ_{step=0}^{199} -(|pressure_error| + |temp_error|)
-    Higher (less negative) is better.  Hardcoded best ≈ -300.
+    Higher (less negative) is better. Hardcoded baseline score ≈ -300.
 
 Usage:
     python evaluate.py                        # default: 50 episodes
@@ -23,6 +23,7 @@ from environment import MysteryControlEnv
 from agent import MySmartAgent
 
 EPISODE_STEPS = 200
+HARDCODED_BASELINE_SCORE = -300.0
 
 
 def score_from_observation(observation: np.ndarray) -> tuple[float, float, float]:
@@ -114,6 +115,9 @@ def evaluate(n_episodes=50, seed_start=0, verbose=False):
     print(f"{'=' * 60}")
     print(f"  Episodes:          {n_episodes}")
     print(f"  Mean Score:        {scores.mean():.2f} ± {scores.std():.2f}")
+    baseline_delta_pct = ((scores.mean() - HARDCODED_BASELINE_SCORE) / abs(HARDCODED_BASELINE_SCORE)) * 100.0
+    print(f"  Hardcoded Baseline:{HARDCODED_BASELINE_SCORE:.0f}")
+    print(f"  Baseline Delta:    {baseline_delta_pct:+.2f}%")
     print(f"  Median Score:      {np.median(scores):.2f}")
     print(f"  Best Episode:      {scores.max():.2f}")
     print(f"  Worst Episode:     {scores.min():.2f}")
