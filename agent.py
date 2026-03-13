@@ -51,6 +51,20 @@ class MySmartAgent(ParticipantAgent):
                 "Place it in the same directory as agent.py"
             )
 
+        # Profile single inference
+        test_obs = np.random.randn(4).astype(np.float32)
+        times = []
+        for _ in range(100):
+            start = time.perf_counter()
+            _ = self.act(test_obs)
+            times.append((time.perf_counter() - start) * 1000)
+        
+        avg_time = np.mean(times[10:])  # Skip first 10 (warmup)
+        self.inference_time_ms = avg_time
+        
+        print(f"✓ Inference time: {avg_time:.3f}ms per step")
+        print(f"  → Expected 50 episodes: {avg_time * 200 * 50 / 1000:.1f}s")
+
         data = np.load(weights_path)
 
         # Hidden layers (Linear + ReLU pairs)
@@ -84,18 +98,58 @@ class MySmartAgent(ParticipantAgent):
         # Normalize to [0, 1] — same preprocessing used during training
         x = np.asarray(observation, dtype=np.float32) / 100.0
 
-        # Forward pass through hidden layers (ReLU activation)
-        for w, b in zip(self.hidden_w, self.hidden_b):
-            x = np.maximum(0.0, x @ w.T + b)
+        # Forward pass through hidden layers (using pre-transposed weights)
+    for w_T, b in zip(self.hidden_w_T, self.hidden_b):
+        x = np.maximum(0.0, x @ w_T + b)  # ReLU activation
+    
+    # Output layer with tanh squashing
+    x = x @ self.mu_w_T + self.mu_b
+    x = np.tanh(x)
+    
+    # Rescale from [-1, 1] → [0, 1]
+    action = (x + 1.0) / 2.0
+    
+    return np.clip(action, 0.0, 1.0).astype(np.float32)
 
-        # Output layer with tanh squashing
-        x = x @ self.mu_w.T + self.mu_b
-        x = np.tanh(x)
 
-        # Rescale from [-1, 1] → [0, 1] (SAC bounded action convention)
-        action = (x + 1.0) / 2.0
-
-        return np.clip(action, 0.0, 1.0).astype(np.float32)
+    def __init__(self, action_space, observation_space):
+        """Initialize agent with CPU-optimized weight loading."""
+        super().__init__(action_space, observation_space)  
+        # ── Load trained weights ────────────────────────────────
+        weights_path = os.path.join(os.path.dirname(__file__), "sac_weights.npz")
+        if not os.path.exists(weights_path):
+            weights_path = "sac_weights.npz"
+        if not os.path.exists(weights_path):
+            raise FileNotFoundError("sac_weights.npz not found.") 
+        data = np.load(weights_path)   
+    
+        # Hidden layers (Linear + ReLU pairs) 
+        self.hidden_w = []
+        self.hidden_b = []
+        i = 0
+        while f"latent_{i}_w" in data:
+            self.hidden_w.append(data[f"latent_{i}_w"].astype(np.float32))
+            self.hidden_b.append(data[f"latent_{i}_b"].astype(np.float32))
+            i += 2 
+        # Output layer
+        self.mu_w = data["mu_w"].astype(np.float32)
+        self.mu_b = data["mu_b"].astype(np.float32)
+      
+        # ✨ CPU OPTIMIZATION: Pre-transpose weights for faster matmul
+        self.hidden_w_T = [w.T.copy() for w in self.hidden_w]  # Pre-compute
+        self.mu_w_T = self.mu_w.T.copy()
+    
+        # Profile inference time
+        import time
+        test_obs = np.random.randn(4).astype(np.float32)
+        times = []
+        for _ in range(100):
+            start = time.perf_counter()
+            _ = self.act(test_obs)
+            times.append((time.perf_counter() - start) * 1000)
+    
+        avg_time = np.mean(times[10:])
+        print(f"✓ CPU Inference: {avg_time:.3f}ms/step | Expected (50 ep): {avg_time*200*50/1000:.1f}s")
 
     # ── Custom Reward Function ──────────────────────────────────
     def reward_function(self, state, action, next_state, terminated, truncated):
@@ -150,3 +204,4 @@ class MySmartAgent(ParticipantAgent):
             reward -= 200.0
 
         return reward
+
