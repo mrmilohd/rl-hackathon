@@ -1,0 +1,235 @@
+════════════════════════════════════════════════════════════════════════
+                    BELLATRIX — COMPLETE RESULTS REPORT
+              SAC Agent for MysteryControlEnv | Cognizance 2026
+════════════════════════════════════════════════════════════════════════
+
+
+1. AGENT CONFIGURATION
+────────────────────────────────────────────────────────────────────────
+  Algorithm:            Soft Actor-Critic (SAC)
+  Network:              MLP [4 → 256 → 256 → 3]
+  Activations:          ReLU (hidden), Tanh (output) → scaled to [0, 1]
+  Observation norm:     obs / 100.0
+  Learning rate:        3e-4
+  Replay buffer:        200,000
+  Batch size:           256
+  Gamma:                0.99
+  Tau:                  0.005
+  Entropy:              auto
+  Training timesteps:   500,000 (~40 min)
+  Parallel envs:        4 (DummyVecEnv)
+  Inference:            Pure numpy (no PyTorch/SB3 at eval time)
+
+
+2. ENVIRONMENT PARAMETERS
+────────────────────────────────────────────────────────────────────────
+  Inlet flow rate:      10.0
+  Outlet flow rate:     8.0
+  Heat coefficient:     5.0
+  Cooling coefficient:  2.0
+  Max steps:            200
+  Safety limit:         95 (pressure & temperature)
+  Pressure start:       [20, 40]    Target: [50, 70]
+  Temperature start:    [20, 30]    Target: [60, 80]
+
+
+3. PERFORMANCE SUMMARY (200 episodes)
+────────────────────────────────────────────────────────────────────────
+  Mean Score:           -283.00 ± 79.23
+  Median Score:         -275.19
+  Best Episode:         -153.29
+  Worst Episode:        -491.04
+  5th Percentile:       -422.93
+  25th Percentile:      -339.83
+  75th Percentile:      -217.52
+  95th Percentile:      -164.62
+  Completion Rate:      200/200 (100.0%)
+  Hardcoded Baseline:   ~-300
+
+
+4. SETTLING TIME ANALYSIS
+────────────────────────────────────────────────────────────────────────
+  Error < 2.0:   mean=10.7   median=11   min=7    max=15   (200/200)
+  Error < 1.0:   mean=11.5   median=12   min=7    max=16   (200/200)
+  Error < 0.5:   mean=12.2   median=12   min=8    max=17   (200/200)
+
+
+5. LARGE-SCALE EVALUATION (500 episodes)
+────────────────────────────────────────────────────────────────────────
+  Mean Score:           -287.7 ± 78.9
+  Median Score:         -279.4
+  Best Episode:         -146.0
+  Worst Episode:        -506.9 (seed=295)
+  5th Percentile:       -422.9
+  95th Percentile:      -173.3
+  Deaths:               0/500 (0.0%)
+  Completion Rate:      100.0%
+  Catastrophic Failures: None
+
+
+6. STRESS TEST: EXTREME GAPS
+────────────────────────────────────────────────────────────────────────
+  Scenario                           Score     Died   Avg P_err  Avg T_err
+  ─────────────────────────────────  ────────  ─────  ─────────  ─────────
+  Lowest start → Highest target      -555.1    no     0.64       2.14
+  Highest start → Lowest target      -136.5    no     0.11       0.58
+  Low P, Low T → High P, High T      -555.1    no     0.64       2.14
+  Low P, High T → High P, Low T      -213.5    no     0.54       0.52
+  High P, Low T → Low P, High T      -489.4    no     0.04       2.41
+  Max P gap, easy T                   -289.5    no     0.58       0.87
+  Easy P, max T gap                   -467.5    no     0.23       2.10
+  ─────────────────────────────────  ────────  ─────  ─────────  ─────────
+  SUMMARY: 0/7 terminated | Avg score: -386.7
+
+
+7. STRESS TEST: BOUNDARY TARGETS (near safety limit)
+────────────────────────────────────────────────────────────────────────
+  Scenario                           Score      Died
+  ─────────────────────────────────  ─────────  ─────
+  Target P=70, T=80 (normal max)     -454.1     no
+  Target P=75, T=80 (P pushed)       -502.6     no
+  Target P=70, T=85 (T pushed)       -561.8     no
+  Target P=80, T=85 (both pushed)    -643.2     no
+  Target P=85, T=85 (dangerous)      -637.5     no
+  Target P=90, T=90 (extreme)        -908.1     no
+  Target P=93, T=93 (right at edge)  -1090.8    no
+  ─────────────────────────────────  ─────────  ─────
+  SUMMARY: 0/7 terminated (agent never crosses safety limit)
+
+
+8. STRESS TEST: ALREADY AT TARGET
+────────────────────────────────────────────────────────────────────────
+  Scenario                           Score    Final P_err  Final T_err
+  ─────────────────────────────────  ───────  ───────────  ───────────
+  Exactly at target (60, 70)         -16.7    0.01         0.07
+  Exactly at target (50, 60)         -37.1    0.09         0.09
+  Exactly at target (70, 80)         -36.4    0.08         0.10
+  Tiny gap P (+1)                    -16.8    0.01         0.07
+  Tiny gap T (+1)                    -17.1    0.01         0.07
+  Tiny gap both (+2)                 -18.7    0.01         0.07
+  Overshoot P (-5)                   -19.0    0.01         0.07
+  Overshoot T (-5)                   -24.3    0.01         0.07
+  ─────────────────────────────────  ───────  ───────────  ───────────
+  SUMMARY: Avg score -23.3 | Agent holds steady with sub-0.1 errors
+
+
+9. STRESS TEST: ASYMMETRIC SCENARIOS
+────────────────────────────────────────────────────────────────────────
+  Scenario                           Score    Died   Avg P_err  Avg T_err
+  ─────────────────────────────────  ───────  ─────  ─────────  ─────────
+  P at target, T far below           -429.6   no     0.05       2.09
+  P at target, T far above           -157.8   no     0.11       0.68
+  T at target, P far below           -133.2   no     0.57       0.10
+  T at target, P far above           -84.8    no     0.36       0.06
+  P needs +50, T needs +0            -133.2   no     0.57       0.10
+  P needs +0, T needs +50            -288.9   no     0.03       1.41
+  P needs -20, T needs +40           -216.0   no     0.13       0.95
+  P needs +30, T needs -10           -86.5    no     0.19       0.25
+  ─────────────────────────────────  ───────  ─────  ─────────  ─────────
+  SUMMARY: 0/8 terminated
+
+
+10. STRESS TEST: OUT-OF-DISTRIBUTION EXTREMES
+────────────────────────────────────────────────────────────────────────
+  Scenario                                  Score      Died
+  ────────────────────────────────────────  ─────────  ─────
+  All zeros (P=0, T=0, TP=50, TT=60)       -507.6     no
+  P at ceiling (P=100, TP=60)               -324.1     no
+  T at ceiling (P=30, T=100, TT=70)         -9616.8    YES
+  Both at ceiling                           -12017.2   YES
+  Target at 0 (impossible)                  -3716.7    no
+  Target at 100 (will terminate)            -9551.1    YES
+  Start=0, Target=95                        -7726.9    YES
+  Start=95, Target=50                       -1110.6    no
+  ────────────────────────────────────────  ─────────  ─────
+  SUMMARY: 4/8 terminated (expected — these are impossible scenarios)
+  NOTE: All deaths are from states that start ABOVE 95 or target
+        unreachable regions. Within the valid training distribution,
+        the agent has 0 deaths.
+
+
+11. ROBUSTNESS: PERTURBED DYNAMICS (±20% / ±40%)
+────────────────────────────────────────────────────────────────────────
+  Perturbation              Mean Score  Completion  Avg P_err  Avg T_err
+  ────────────────────────  ──────────  ──────────  ─────────  ─────────
+  Baseline (no change)      -247.9      30/30       0.20       1.04
+  Inlet +20%                -318.5      30/30       0.56       1.04
+  Inlet -20%                -366.7      30/30       0.78       1.06
+  Outlet +20%               -333.2      30/30       0.62       1.05
+  Outlet -20%               -344.8      30/30       0.68       1.04
+  Heater +20%               -261.2      30/30       0.20       1.10
+  Heater -20%               -391.8      30/30       0.21       1.74
+  Cooling +20%              -312.4      30/30       0.21       1.35
+  Cooling -20%              -307.1      30/30       0.21       1.33
+  All +20%                  -202.8      30/30       0.16       0.85
+  All -20%                  -315.9      30/30       0.27       1.31
+  Inlet+20%, Heater-20%     -456.1      30/30       0.55       1.73
+  All +40% (extreme)        -171.5      30/30       0.13       0.72
+  All -40% (extreme)        -429.7      30/30       0.38       1.77
+  ────────────────────────  ──────────  ──────────  ─────────  ─────────
+  SUMMARY: 100% completion across ALL perturbations (420/420 episodes)
+
+
+12. DETERMINISM & ACTION BOUNDS
+────────────────────────────────────────────────────────────────────────
+  Determinism:     PASS (identical scores across 3 runs for each seed)
+  Action range:    [0.000000, 1.000000]
+  Bound violations: 0 out of 20,006 actions checked
+  Status:          PASS
+
+
+13. WORST-CASE DEEP DIVE (seed=295)
+────────────────────────────────────────────────────────────────────────
+  Initial state:   P=22.8   T=20.6   TP=69.2   TT=78.1
+  Gap:             ΔP=+46.4          ΔT=+57.4 (largest combined gap)
+
+  Step   Pressure  P_err   Temp    T_err   Score
+  ────   ────────  ──────  ──────  ──────  ──────
+    0    32.7      36.6    25.2    52.9    -89.5
+    1    42.3      26.9    29.6    48.5    -164.8
+    2    51.7      17.5    34.0    44.1    -226.5
+    5    67.9       1.3    46.5    31.6    -347.5
+   10    69.1       0.2    65.7    12.4    -449.3
+   15    69.2       0.0    77.1     1.0    -470.8
+   20    69.3       0.0    78.2     0.1    -471.8
+  199    69.3       0.1    78.2     0.1    -506.9
+
+  Analysis: Pressure reaches target by step 5. Temperature (harder
+  channel due to slower dynamics) takes until step 15. Score penalty
+  of -471.8 accumulated in first 20 steps; only -35.1 in remaining
+  180 steps. Confirms ramp-up phase dominates total penalty.
+
+
+14. KEY FINDINGS
+────────────────────────────────────────────────────────────────────────
+  1. The SAC agent achieves 100% completion across 500+ standard
+     episodes with zero safety violations.
+
+  2. Mean score of -283 outperforms the hardcoded baseline of -300
+     by approximately 6%.
+
+  3. The agent settles to sub-1.0 errors within 12 steps on average,
+     with 100% of episodes settling below the 2.0 threshold.
+
+  4. ~80% of total score penalty comes from the first 15 ramp-up steps
+     where errors are inherently large (initial gap of 30-50 units).
+
+  5. Under ±20% perturbation to ALL environment dynamics simultaneously,
+     the agent maintains 100% completion with no deaths.
+
+  6. The agent correctly handles asymmetric scenarios, overshoot
+     recovery, and near-target holding with sub-0.1 steady-state errors.
+
+  7. Deaths only occur in physically impossible scenarios (starting
+     above the safety limit, targeting values at 100, etc.).
+
+  8. Temperature is the harder control channel (avg error 1.04 vs 0.20
+     for pressure) due to slower dynamics and nonlinear self-cooling.
+
+  9. Inference is fully deterministic and actions are always within
+     the valid [0, 1] range across all tested conditions.
+
+
+════════════════════════════════════════════════════════════════════════
+                         END OF REPORT
+════════════════════════════════════════════════════════════════════════
