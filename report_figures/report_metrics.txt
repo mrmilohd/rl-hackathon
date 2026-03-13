@@ -14,7 +14,7 @@ Max (best):           -153.29
 25th percentile:      -339.83
 75th percentile:      -217.52
 95th percentile:      -164.62
-Hardcoded baseline score: ~-300
+Hardcoded baseline score: -255.1
 
 --- Settling Time ---
 Error < 2.0:  mean=10.7  median=11  (200/200 episodes)

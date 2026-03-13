@@ -44,7 +44,7 @@
   75th Percentile:      -217.52
   95th Percentile:      -164.62
   Completion Rate:      200/200 (100.0%)
-  Hardcoded Baseline Score: ~-300
+  Hardcoded Baseline Score: -255.1
 
 
 4. SETTLING TIME ANALYSIS
@@ -205,9 +205,9 @@
   1. The SAC agent achieves 100% completion across 500+ standard
      episodes with zero safety violations.
 
-    2. Mean score of -283 outperforms the hardcoded baseline score
-      (~-300)
-     by approximately 6%.
+      2. Mean score of -283 underperforms the hardcoded baseline score
+        (-255.1)
+        by approximately 10.9%.
 
   3. The agent settles to sub-1.0 errors within 12 steps on average,
      with 100% of episodes settling below the 2.0 threshold.
