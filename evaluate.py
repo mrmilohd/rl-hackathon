@@ -18,8 +18,50 @@ Usage:
 import numpy as np
 import argparse
 import time
+
 from environment import MysteryControlEnv
 from agent import MySmartAgent
+
+EPISODE_STEPS = 200
+
+
+def score_from_observation(observation: np.ndarray) -> tuple[float, float, float]:
+    pressure, temperature, target_pressure, target_temperature = observation
+    pressure_error = abs(pressure - target_pressure)
+    temperature_error = abs(temperature - target_temperature)
+    return -(pressure_error + temperature_error), pressure_error, temperature_error
+
+
+def run_single_episode(env: MysteryControlEnv, agent: MySmartAgent, seed: int) -> dict:
+    observation, _ = env.reset(seed=seed)
+    episode_score = 0.0
+    terminated_early = False
+    steps_survived = 0
+    pressure_error = 0.0
+    temperature_error = 0.0
+
+    for step in range(EPISODE_STEPS):
+        action = np.clip(agent.act(observation), 0.0, 1.0).astype(np.float32)
+        next_observation, _, terminated, _, _ = env.step(action)
+
+        step_score, pressure_error, temperature_error = score_from_observation(next_observation)
+        episode_score += step_score
+        steps_survived = step + 1
+        observation = next_observation
+
+        if terminated:
+            remaining = EPISODE_STEPS - step - 1
+            episode_score += remaining * step_score
+            terminated_early = True
+            break
+
+    return {
+        "episode_score": episode_score,
+        "steps_survived": steps_survived,
+        "terminated_early": terminated_early,
+        "pressure_error": pressure_error,
+        "temperature_error": temperature_error,
+    }
 
 
 def evaluate(n_episodes=50, seed_start=0, verbose=False):
@@ -46,34 +88,12 @@ def evaluate(n_episodes=50, seed_start=0, verbose=False):
 
     for ep in range(n_episodes):
         seed = seed_start + ep
-        obs, _ = env.reset(seed=seed)
-        episode_score = 0.0
-        terminated_early = False
-        steps_survived = 0
-
-        for step in range(200):
-            action = agent.act(obs)
-
-            # Validate action bounds
-            action = np.clip(action, 0.0, 1.0).astype(np.float32)
-
-            next_obs, reward, terminated, truncated, info = env.step(action)
-
-            # ── Hackathon scoring (raw metric) ──
-            p, t, tp, tt = next_obs
-            p_err = abs(p - tp)
-            t_err = abs(t - tt)
-            episode_score += -(p_err + t_err)
-            steps_survived = step + 1
-
-            obs = next_obs
-
-            if terminated:
-                # Penalize remaining steps as if error stayed constant
-                remaining = 200 - step - 1
-                episode_score += remaining * -(p_err + t_err)
-                terminated_early = True
-                break
+        result = run_single_episode(env, agent, seed)
+        episode_score = result["episode_score"]
+        steps_survived = result["steps_survived"]
+        terminated_early = result["terminated_early"]
+        p_err = result["pressure_error"]
+        t_err = result["temperature_error"]
 
         if not terminated_early:
             completions += 1
@@ -89,9 +109,9 @@ def evaluate(n_episodes=50, seed_start=0, verbose=False):
     scores = np.array(scores)
 
     # ── Summary ─────────────────────────────────────────────
-    print(f"\n{'='*60}")
-    print(f"  EVALUATION RESULTS")
-    print(f"{'='*60}")
+    print(f"\n{'=' * 60}")
+    print("  EVALUATION RESULTS")
+    print(f"{'=' * 60}")
     print(f"  Episodes:          {n_episodes}")
     print(f"  Mean Score:        {scores.mean():.2f} ± {scores.std():.2f}")
     print(f"  Median Score:      {np.median(scores):.2f}")
@@ -99,18 +119,25 @@ def evaluate(n_episodes=50, seed_start=0, verbose=False):
     print(f"  Worst Episode:     {scores.min():.2f}")
     print(f"  25th Percentile:   {np.percentile(scores, 25):.2f}")
     print(f"  75th Percentile:   {np.percentile(scores, 75):.2f}")
-    print(f"  Completion Rate:   {completions}/{n_episodes} "
-          f"({completions / n_episodes * 100:.1f}%)")
-    print(f"  Avg Steps Survived:{total_steps_survived / n_episodes:.1f} / 200")
-    print(f"  Eval Time:         {elapsed:.1f}s "
-          f"({elapsed / n_episodes * 1000:.1f}ms per episode)")
-    print(f"{'='*60}")
+    print(
+        f"  Completion Rate:   {completions}/{n_episodes} "
+        f"({completions / n_episodes * 100:.1f}%)"
+    )
+    print(
+        f"  Avg Steps Survived:{total_steps_survived / n_episodes:.1f} "
+        f"/ {EPISODE_STEPS}"
+    )
+    print(
+        f"  Eval Time:         {elapsed:.1f}s "
+        f"({elapsed / n_episodes * 1000:.1f}ms per episode)"
+    )
+    print(f"{'=' * 60}")
 
     env.close()
     return scores
 
 
-if __name__ == "__main__":
+def main() -> None:
     parser = argparse.ArgumentParser(description="BELLATRIX Evaluation")
     parser.add_argument("--episodes", type=int, default=50,
                         help="Number of evaluation episodes")
@@ -125,3 +152,7 @@ if __name__ == "__main__":
         seed_start=args.seed_start,
         verbose=args.verbose,
     )
+
+
+if __name__ == "__main__":
+    main()

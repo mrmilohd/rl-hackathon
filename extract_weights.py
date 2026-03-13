@@ -11,8 +11,24 @@ import numpy as np
 import argparse
 import os
 
+DEFAULT_MODEL_PATH = "best_sac_agent.zip"
+DEFAULT_OUTPUT_PATH = "sac_weights.npz"
 
-def extract(model_path="best_sac_agent.zip", output_path="sac_weights.npz"):
+
+def resolve_model_path(model_path: str) -> str | None:
+    if os.path.exists(model_path):
+        return model_path
+
+    alt = model_path.replace(".zip", "")
+    if os.path.exists(alt):
+        return alt
+    if os.path.exists(f"{alt}.zip"):
+        return f"{alt}.zip"
+
+    return None
+
+
+def extract(model_path: str = DEFAULT_MODEL_PATH, output_path: str = DEFAULT_OUTPUT_PATH) -> bool:
     try:
         from stable_baselines3 import SAC
     except ImportError:
@@ -20,34 +36,28 @@ def extract(model_path="best_sac_agent.zip", output_path="sac_weights.npz"):
         print("  pip install stable-baselines3")
         return False
 
-    if not os.path.exists(model_path):
-        # Try without .zip extension
-        alt = model_path.replace(".zip", "")
-        if os.path.exists(alt):
-            model_path = alt
-        elif os.path.exists(alt + ".zip"):
-            model_path = alt + ".zip"
-        else:
-            print(f"ERROR: Model file not found: {model_path}")
-            return False
+    resolved_model_path = resolve_model_path(model_path)
+    if resolved_model_path is None:
+        print(f"ERROR: Model file not found: {model_path}")
+        return False
 
-    print(f"Loading model from: {model_path}")
-    model = SAC.load(model_path)
+    print(f"Loading model from: {resolved_model_path}")
+    model = SAC.load(resolved_model_path)
     actor = model.actor
 
     weights = {}
 
     # Extract latent_pi (hidden layers: Linear + ReLU pairs)
     layer_count = 0
-    for i, layer in enumerate(actor.latent_pi):
-        if hasattr(layer, 'weight'):
-            weights[f'latent_{i}_w'] = layer.weight.detach().cpu().numpy()
-            weights[f'latent_{i}_b'] = layer.bias.detach().cpu().numpy()
+    for index, layer in enumerate(actor.latent_pi):
+        if hasattr(layer, "weight"):
+            weights[f"latent_{index}_w"] = layer.weight.detach().cpu().numpy()
+            weights[f"latent_{index}_b"] = layer.bias.detach().cpu().numpy()
             layer_count += 1
 
     # Extract mu (output mean layer)
-    weights['mu_w'] = actor.mu.weight.detach().cpu().numpy()
-    weights['mu_b'] = actor.mu.bias.detach().cpu().numpy()
+    weights["mu_w"] = actor.mu.weight.detach().cpu().numpy()
+    weights["mu_b"] = actor.mu.bias.detach().cpu().numpy()
 
     np.savez(output_path, **weights)
 
@@ -60,9 +70,13 @@ def extract(model_path="best_sac_agent.zip", output_path="sac_weights.npz"):
     return True
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--model", default="best_sac_agent.zip")
-    parser.add_argument("--output", default="sac_weights.npz")
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Extract numpy weights from a trained SAC model")
+    parser.add_argument("--model", default=DEFAULT_MODEL_PATH)
+    parser.add_argument("--output", default=DEFAULT_OUTPUT_PATH)
     args = parser.parse_args()
     extract(args.model, args.output)
+
+
+if __name__ == "__main__":
+    main()

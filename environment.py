@@ -1,82 +1,75 @@
+import numpy as np
 import gymnasium as gym
 from gymnasium import spaces
-import numpy as np
+
+MAX_STEPS = 200
+MIN_STATE_VALUE = 0.0
+MAX_STATE_VALUE = 100.0
+SAFETY_LIMIT = 95.0
 
 class MysteryControlEnv(gym.Env):
     metadata = {"render_modes": ["human"], "render_fps": 30}
 
     def __init__(self, render_mode=None):
-        super(MysteryControlEnv, self).__init__()
-        
-        # Action space: [Inlet Valve Opening (0-1), Outlet Valve Opening (0-1), Heater Power (0-1)]
-        self.action_space = spaces.Box(low=0, high=1, shape=(3,), dtype=np.float32)
-        
-        # Observation space: [Current Pressure, Current Temperature, Target Pressure, Target Temperature]
-        # Pressure: 0 to 100 psi, Temperature: 0 to 100 C
-        self.observation_space = spaces.Box(low=0, high=100, shape=(4,), dtype=np.float32)
-        
+        super().__init__()
+        self.action_space = spaces.Box(low=0.0, high=1.0, shape=(3,), dtype=np.float32)
+        self.observation_space = spaces.Box(
+            low=MIN_STATE_VALUE,
+            high=MAX_STATE_VALUE,
+            shape=(4,),
+            dtype=np.float32,
+        )
         self.render_mode = render_mode
         self.state = None
-        self.steps_beyond_done = None
-        self.max_steps = 200
+        self.max_steps = MAX_STEPS
         self.current_step = 0
-        
-        # System parameters (mystery parameters to be tuned or learned)
+
         self.inlet_flow_rate = 10.0
         self.outlet_flow_rate = 8.0
         self.heat_coefficient = 5.0
         self.cooling_coefficient = 2.0
-        
+
         self.reset()
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
-        
-        # Random initial state and targets
+        del options
+
         pressure = self.np_random.uniform(20, 40)
         temp = self.np_random.uniform(20, 30)
         target_pressure = self.np_random.uniform(50, 70)
         target_temp = self.np_random.uniform(60, 80)
-        
+
         self.state = np.array([pressure, temp, target_pressure, target_temp], dtype=np.float32)
         self.current_step = 0
-        
+
         return self.state, {}
 
     def step(self, action):
-        inlet_v, outlet_v, heater_p = action
+        clipped_action = np.clip(np.asarray(action, dtype=np.float32), 0.0, 1.0)
+        inlet_v, outlet_v, heater_p = clipped_action
         pressure, temp, target_pressure, target_temp = self.state
-        
-        # Update pressure (simplified dynamics)
+
         pressure_change = (inlet_v * self.inlet_flow_rate) - (outlet_v * self.outlet_flow_rate)
-        new_pressure = np.clip(pressure + pressure_change, 0, 100)
-        
-        # Update temperature (simplified dynamics)
+        new_pressure = np.clip(pressure + pressure_change, MIN_STATE_VALUE, MAX_STATE_VALUE)
+
         temp_change = (heater_p * self.heat_coefficient) - (self.cooling_coefficient * (temp / 100))
-        new_temp = np.clip(temp + temp_change, 0, 100)
-        
-        # Check for safety violations (pressure or temp too high)
-        terminated = False
-        if new_pressure > 95 or new_temp > 95:
-            terminated = True
-        
-        # Default reward logic (participants will modify this)
-        # Reward is higher when pressure and temp are close to targets
+        new_temp = np.clip(temp + temp_change, MIN_STATE_VALUE, MAX_STATE_VALUE)
+
+        terminated = bool(new_pressure > SAFETY_LIMIT or new_temp > SAFETY_LIMIT)
+
         pressure_error = abs(new_pressure - target_pressure)
         temp_error = abs(new_temp - target_temp)
-        
-        # Basic reward: Negative error
         reward = -(pressure_error + temp_error)
-        
-        # Penalty for termination (failure)
+
         if terminated:
             reward -= 100
-        
+
         self.state = np.array([new_pressure, new_temp, target_pressure, target_temp], dtype=np.float32)
         self.current_step += 1
-        
+
         truncated = self.current_step >= self.max_steps
-        
+
         return self.state, reward, terminated, truncated, {}
 
     def render(self):

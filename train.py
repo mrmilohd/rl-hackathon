@@ -12,12 +12,23 @@ After training, run extract_weights.py to get sac_weights.npz for submission.
 
 import numpy as np
 import gymnasium as gym
-from gymnasium import spaces
-import os
 import time
-import json
+from dataclasses import dataclass
 
 from environment import MysteryControlEnv
+from wrappers import NormalizedObsWrapper
+
+
+@dataclass(frozen=True)
+class TrainingConfig:
+    total_timesteps: int = 300_000
+    n_envs: int = 4
+    log_every_steps: int = 2_000
+    seed: int = 42
+    device: str = "cpu"
+
+
+CONFIG = TrainingConfig()
 
 
 # ── Reward Shaping Wrapper ──────────────────────────────────
@@ -83,19 +94,6 @@ class ShapedRewardWrapper(gym.Wrapper):
 
 
 # ── Observation Normalization ───────────────────────────────
-class NormalizedObsWrapper(gym.ObservationWrapper):
-    """Scale all observations from [0, 100] to [0, 1]."""
-
-    def __init__(self, env):
-        super().__init__(env)
-        self.observation_space = spaces.Box(
-            low=0.0, high=1.0, shape=(4,), dtype=np.float32
-        )
-
-    def observation(self, obs):
-        return obs / 100.0
-
-
 # ── Environment Factory ─────────────────────────────────────
 def make_env(rank=0, seed=0):
     def _init():
@@ -116,7 +114,7 @@ def train():
     class DetailedProgressCallback(BaseCallback):
         """Fast console logger for detailed progress without slowing training."""
 
-        def __init__(self, total_timesteps, log_every_steps=2000, verbose=0):
+        def __init__(self, total_timesteps, log_every_steps=2_000, verbose=0):
             super().__init__(verbose)
             self.total_timesteps = total_timesteps
             self.log_every_steps = log_every_steps
@@ -159,14 +157,11 @@ def train():
 
             return True
 
-    device = "cpu"
-    TOTAL_TIMESTEPS = 300_000
-    N_ENVS = 4
-    LOG_EVERY_STEPS = 2000
+    print(f"Device: {CONFIG.device} | Timesteps: {CONFIG.total_timesteps:,}")
 
-    print(f"Device: {device} | Timesteps: {TOTAL_TIMESTEPS:,}")
-
-    train_envs = DummyVecEnv([make_env(rank=i, seed=42) for i in range(N_ENVS)])
+    train_envs = DummyVecEnv(
+        [make_env(rank=i, seed=CONFIG.seed) for i in range(CONFIG.n_envs)]
+    )
 
     model = SAC(
         "MlpPolicy",
@@ -183,18 +178,22 @@ def train():
         target_entropy="auto",
         policy_kwargs=dict(net_arch=[256, 256]),
         verbose=0,
-        device=device,
-        seed=42,
+        device=CONFIG.device,
+        seed=CONFIG.seed,
     )
 
-    print(f"Detailed progress: every {LOG_EVERY_STEPS:,} timesteps")
+    print(f"Detailed progress: every {CONFIG.log_every_steps:,} timesteps")
     progress_callback = DetailedProgressCallback(
-        total_timesteps=TOTAL_TIMESTEPS,
-        log_every_steps=LOG_EVERY_STEPS,
+        total_timesteps=CONFIG.total_timesteps,
+        log_every_steps=CONFIG.log_every_steps,
     )
 
     # Keep training fast: use lightweight callback logging instead of rich progress bars.
-    model.learn(total_timesteps=TOTAL_TIMESTEPS, callback=progress_callback, progress_bar=False)
+    model.learn(
+        total_timesteps=CONFIG.total_timesteps,
+        callback=progress_callback,
+        progress_bar=False,
+    )
     model.save("best_sac_agent")
     print("Saved: best_sac_agent.zip")
     print("Now run: python extract_weights.py")

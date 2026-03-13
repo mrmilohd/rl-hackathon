@@ -50,7 +50,7 @@ the ramp-up phase (steps 0–15) where the raw metric gives large constant negat
   stable gradient computation.
 - **Parallel environments**: 4 DummyVecEnv instances for faster data collection.
 - **Hyperparameters**: lr=3e-4, buffer=200K, batch=256, γ=0.99, τ=0.005.
-- **Training duration**: 500K timesteps on GPU (~30 min) / 300K on CPU (~45 min).
+- **Training duration**: 300K timesteps on CPU (~45 min, machine-dependent).
 - **Checkpointing**: Best model saved based on hackathon score evaluated every 5K steps.
 
 ### Weight Extraction for Submission
@@ -95,6 +95,7 @@ submission/
 ├── environment.py        ← Environment (provided by organizers)
 ├── evaluate.py           ← Evaluation script
 ├── train.py              ← Training script (requires stable-baselines3)
+├── wrappers.py           ← Shared observation wrappers
 ├── extract_weights.py    ← Converts .zip → .npz (one-time)
 └── README.md             ← This file
 ```
