@@ -1,0 +1,45 @@
+============================================================
+BELLATRIX — FINAL METRICS SUMMARY
+============================================================
+Episodes evaluated:   200
+Completion rate:      200/200 (100.0%)
+
+--- Score Statistics ---
+Mean:                 -283.00
+Std:                  79.23
+Median:               -275.19
+Min (worst):          -491.04
+Max (best):           -153.29
+5th percentile:       -422.93
+25th percentile:      -339.83
+75th percentile:      -217.52
+95th percentile:      -164.62
+Hardcoded best:       ~-300
+
+--- Settling Time ---
+Error < 2.0:  mean=10.7  median=11  (200/200 episodes)
+Error < 1.0:  mean=11.5  median=12  (200/200 episodes)
+
+--- Environment Parameters ---
+Inlet flow rate:      10.0
+Outlet flow rate:     8.0
+Heat coefficient:     5.0
+Cooling coefficient:  2.0
+Max steps:            200
+Safety limit:         95 (pressure & temp)
+
+--- Agent Architecture ---
+Algorithm:            SAC (Soft Actor-Critic)
+Network:              MLP [4 → 256 → 256 → 3]
+Activation:           ReLU (hidden), Tanh (output)
+Output scaling:       Tanh → [0, 1]
+Observation norm:     /100.0
+
+--- Hyperparameters ---
+Learning rate:        3e-4
+Replay buffer:        200,000
+Batch size:           256
+Gamma:                0.99
+Tau:                  0.005
+Entropy:              auto
+============================================================

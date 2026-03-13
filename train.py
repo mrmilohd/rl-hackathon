@@ -2,8 +2,7 @@
 train.py — SAC Training Script
 ================================
 Trains a Soft Actor-Critic agent for the MysteryControlEnv.
-Run on Kaggle/Colab with GPU for fastest results (~30 min).
-Also works on CPU within ~45-60 min.
+Run on CPU for consistent local training.
 
 Requirements:
     pip install stable-baselines3 gymnasium numpy
@@ -113,7 +112,6 @@ def train():
     from stable_baselines3 import SAC
     from stable_baselines3.common.vec_env import DummyVecEnv
     from stable_baselines3.common.callbacks import BaseCallback
-    import torch
 
     class DetailedProgressCallback(BaseCallback):
         """Fast console logger for detailed progress without slowing training."""
@@ -161,8 +159,8 @@ def train():
 
             return True
 
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    TOTAL_TIMESTEPS = 500_000 if device == "cuda" else 300_000
+    device = "cpu"
+    TOTAL_TIMESTEPS = 300_000
     N_ENVS = 4
     LOG_EVERY_STEPS = 2000
 
