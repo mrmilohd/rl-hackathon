@@ -21,7 +21,7 @@ from wrappers import NormalizedObsWrapper
 
 @dataclass(frozen=True)
 class TrainingConfig:
-    total_timesteps: int = 300_000
+    total_timesteps: int = 500_000
     n_envs: int = 4
     log_every_steps: int = 2_000
     seed: int = 42

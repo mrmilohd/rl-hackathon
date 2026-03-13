@@ -44,7 +44,7 @@
   75th Percentile:      -217.52
   95th Percentile:      -164.62
   Completion Rate:      200/200 (100.0%)
-  Hardcoded Baseline:   ~-300
+  Hardcoded Baseline Score: ~-300
 
 
 4. SETTLING TIME ANALYSIS
