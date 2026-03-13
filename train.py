@@ -116,7 +116,7 @@ def train():
     import torch
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    TOTAL_TIMESTEPS = 500_000 if device == "cuda" else 300_000
+    TOTAL_TIMESTEPS = 400_000 if device == "cuda" else 400_000
     N_ENVS = 4
 
     print(f"Device: {device} | Timesteps: {TOTAL_TIMESTEPS:,}")
