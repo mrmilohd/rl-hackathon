@@ -15,6 +15,7 @@ Allowed libraries used: numpy, gymnasium (matplotlib for optional plotting)
 from agent_template import ParticipantAgent
 import numpy as np
 import os
+import time
 
 # Force numpy to use all CPU cores for matrix operations
 os.environ['OMP_NUM_THREADS'] = str(os.cpu_count())
@@ -99,17 +100,17 @@ class MySmartAgent(ParticipantAgent):
         x = np.asarray(observation, dtype=np.float32) / 100.0
 
         # Forward pass through hidden layers (using pre-transposed weights)
-    for w_T, b in zip(self.hidden_w_T, self.hidden_b):
-        x = np.maximum(0.0, x @ w_T + b)  # ReLU activation
+        for w_T, b in zip(self.hidden_w_T, self.hidden_b):
+            x = np.maximum(0.0, x @ w_T + b)  # ReLU activation
     
-    # Output layer with tanh squashing
-    x = x @ self.mu_w_T + self.mu_b
-    x = np.tanh(x)
+        # Output layer with tanh squashing
+        x = x @ self.mu_w_T + self.mu_b
+        x = np.tanh(x)
     
     # Rescale from [-1, 1] → [0, 1]
-    action = (x + 1.0) / 2.0
+        action = (x + 1.0) / 2.0
     
-    return np.clip(action, 0.0, 1.0).astype(np.float32)
+        return np.clip(action, 0.0, 1.0).astype(np.float32)
 
 
     def __init__(self, action_space, observation_space):
