@@ -115,9 +115,56 @@ def train():
     from stable_baselines3.common.callbacks import BaseCallback
     import torch
 
+    class DetailedProgressCallback(BaseCallback):
+        """Fast console logger for detailed progress without slowing training."""
+
+        def __init__(self, total_timesteps, log_every_steps=2000, verbose=0):
+            super().__init__(verbose)
+            self.total_timesteps = total_timesteps
+            self.log_every_steps = log_every_steps
+            self.last_logged_step = 0
+            self.episodes_completed = 0
+            self.start_time = None
+
+        def _on_training_start(self):
+            self.start_time = time.time()
+
+        def _on_step(self) -> bool:
+            dones = self.locals.get("dones")
+            if dones is not None:
+                self.episodes_completed += int(np.sum(dones))
+
+            if self.num_timesteps - self.last_logged_step >= self.log_every_steps:
+                elapsed = max(time.time() - self.start_time, 1e-9)
+                percent = 100.0 * self.num_timesteps / self.total_timesteps
+                fps = self.num_timesteps / elapsed
+                remaining_steps = max(self.total_timesteps - self.num_timesteps, 0)
+                eta_sec = remaining_steps / max(fps, 1e-9)
+
+                mean_ep_rew = None
+                mean_ep_len = None
+                if hasattr(self.model, "ep_info_buffer") and len(self.model.ep_info_buffer) > 0:
+                    mean_ep_rew = float(np.mean([ep["r"] for ep in self.model.ep_info_buffer]))
+                    mean_ep_len = float(np.mean([ep["l"] for ep in self.model.ep_info_buffer]))
+
+                eta_min = eta_sec / 60.0
+                msg = (
+                    f"[Progress] {self.num_timesteps:,}/{self.total_timesteps:,} "
+                    f"({percent:5.1f}%) | episodes={self.episodes_completed:,} "
+                    f"| fps={fps:,.0f} | eta={eta_min:5.1f} min"
+                )
+                if mean_ep_rew is not None and mean_ep_len is not None:
+                    msg += f" | mean_ep_rew={mean_ep_rew:7.2f} | mean_ep_len={mean_ep_len:6.1f}"
+
+                print(msg)
+                self.last_logged_step = self.num_timesteps
+
+            return True
+
     device = "cuda" if torch.cuda.is_available() else "cpu"
     TOTAL_TIMESTEPS = 500_000 if device == "cuda" else 300_000
     N_ENVS = 4
+    LOG_EVERY_STEPS = 2000
 
     print(f"Device: {device} | Timesteps: {TOTAL_TIMESTEPS:,}")
 
@@ -142,7 +189,14 @@ def train():
         seed=42,
     )
 
-    model.learn(total_timesteps=TOTAL_TIMESTEPS, progress_bar=True)
+    print(f"Detailed progress: every {LOG_EVERY_STEPS:,} timesteps")
+    progress_callback = DetailedProgressCallback(
+        total_timesteps=TOTAL_TIMESTEPS,
+        log_every_steps=LOG_EVERY_STEPS,
+    )
+
+    # Keep training fast: use lightweight callback logging instead of rich progress bars.
+    model.learn(total_timesteps=TOTAL_TIMESTEPS, callback=progress_callback, progress_bar=False)
     model.save("best_sac_agent")
     print("Saved: best_sac_agent.zip")
     print("Now run: python extract_weights.py")

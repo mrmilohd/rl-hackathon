@@ -56,7 +56,7 @@ def extract(model_path="best_sac_agent.zip", output_path="sac_weights.npz"):
     for k, v in weights.items():
         print(f"    {k}: {v.shape} (dtype={v.dtype})")
     print(f"\n  File size: {os.path.getsize(output_path) / 1024:.1f} KB")
-    print(f"  ✓ Ready for submission. No SB3/torch needed at inference.")
+    print(f"  Ready for submission. No SB3/torch needed at inference.")
     return True
 
 
