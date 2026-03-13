@@ -16,6 +16,14 @@ from agent_template import ParticipantAgent
 import numpy as np
 import os
 
+# Force numpy to use all CPU cores for matrix operations
+os.environ['OMP_NUM_THREADS'] = str(os.cpu_count())
+os.environ['OPENBLAS_NUM_THREADS'] = str(os.cpu_count())
+os.environ['MKL_NUM_THREADS'] = str(os.cpu_count())
+os.environ['VECLIB_MAXIMUM_THREADS'] = str(os.cpu_count())
+
+# Also set numpy to use optimized BLAS
+np.set_printoptions(precision=4, suppress=True)
 
 class MySmartAgent(ParticipantAgent):
     """
